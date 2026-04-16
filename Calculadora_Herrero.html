@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Materiales 6m</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 15px; background: #f5f5f5; }
+  h1 { text-align: center; color: #333; }
+ .linea { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+ .tipo-linea { font-weight: bold; color: #007bff; margin-bottom: 10px; }
+ .campos { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+ .campo { flex: 1; min-width: 120px; }
+  label { display: block; font-size: 14px; margin-bottom: 3px; color: #555; }
+  input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+ .botones { display: flex; gap: 10px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+  button { background: #007bff; color: white; border: none; padding: 12px 25px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+  button:hover { background: #0056b3; }
+  button.secundario { background: #6c757d; }
+  button.secundario:hover { background: #545b62; }
+  button.peligro { background: #dc3545; padding: 8px 12px; font-size: 14px; }
+  button.peligro:hover { background: #b02a37; }
+  button.exito { background: #28a745; }
+  button.exito:hover { background: #1e7e34; }
+  #resultado { background: white; padding: 20px; border-radius: 8px; margin-top: 20px; display: none; }
+  table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+  th { background: #007bff; color: white; }
+ .total { background: #e7f3ff; font-weight: bold; }
+ .subtotal { background: #f8f9fa; font-weight: bold; }
+ .accesorio { background: #fff3cd; }
+</style>
+</head>
+<body>
+
+<h1>Calculadora de Materiales - Tramos de 6m</h1>
+
+<div id="lineas"></div>
+
+<div class="botones">
+  <button class="exito" onclick="agregarLinea('material')">+ Agregar Material</button>
+  <button class="exito" onclick="agregarLinea('accesorio')">+ Agregar Accesorio</button>
+  <button onclick="calcular()">Calcular Total</button>
+  <button class="secundario" onclick="limpiar()">Nuevo cálculo</button>
+</div>
+
+<div id="resultado"></div>
+
+<script>
+const TRAMO = 6;
+const DESPERDICIO = 0.10;
+let contadorLineas = 0;
+
+function agregarLinea(tipoLinea) {
+  contadorLineas++;
+  const contenedor = document.getElementById('lineas');
+  const div = document.createElement('div');
+  div.className = 'linea';
+  div.id = `linea${contadorLineas}`;
+  
+  if (tipoLinea === 'material') {
+    div.innerHTML = `
+      <div class="tipo-linea">MATERIAL</div>
+      <div class="campos">
+        <div class="campo">
+          <label>Tipo de material</label>
+          <select id="tipo${contadorLineas}">
+            <option value="Ángulo">Ángulo</option>
+            <option value="Cuadrado">Cuadrado</option>
+            <option value="Redondo">Redondo</option>
+            <option value="PTR">PTR</option>
+            <option value="Solera">Solera</option>
+            <option value="Tubo">Tubo</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Cantidad de piezas</label>
+          <input type="number" id="cant${contadorLineas}" min="1" value="1">
+        </div>
+        <div class="campo">
+          <label>Medida por pieza</label>
+          <input type="number" id="medida${contadorLineas}" min="0.01" step="0.01" value="1">
+        </div>
+        <div class="campo">
+          <label>Unidad</label>
+          <select id="unidad${contadorLineas}">
+            <option value="m">Metros</option>
+            <option value="cm">Centímetros</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Precio x tramo 6m ($)</label>
+          <input type="number" id="precio${contadorLineas}" min="0.01" step="0.01" value="100">
+        </div>
+        <div class="campo" style="flex: 0;">
+          <button class="peligro" onclick="eliminarLinea(${contadorLineas})">X</button>
+        </div>
+      </div>
+    `;
+  } else {
+    div.innerHTML = `
+      <div class="tipo-linea">ACCESORIO</div>
+      <div class="campos">
+        <div class="campo">
+          <label>Descripción</label>
+          <select id="tipo${contadorLineas}">
+            <option value="Cerrojo">Cerrojo</option>
+            <option value="Bisagra">Bisagra</option>
+            <option value="Figurilla">Figurilla</option>
+            <option value="Chapa">Chapa</option>
+            <option value="Pintura">Pintura</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Cantidad</label>
+          <input type="number" id="cant${contadorLineas}" min="1" value="1">
+        </div>
+        <div class="campo">
+          <label>Precio unitario ($)</label>
+          <input type="number" id="precio${contadorLineas}" min="0.01" step="0.01" value="50">
+        </div>
+        <div class="campo" style="flex: 0;">
+          <button class="peligro" onclick="eliminarLinea(${contadorLineas})">X</button>
+        </div>
+      </div>
+    `;
+  }
+  contenedor.appendChild(div);
+}
+
+function eliminarLinea(id) {
+  document.getElementById(`linea${id}`).remove();
+}
+
+function calcular() {
+  const lineas = document.querySelectorAll('.linea');
+  if (lineas.length === 0) {
+    alert("Agrega al menos una línea");
+    return;
+  }
+
+  const materiales = {};
+  const accesorios = [];
+  let totalCosto = 0;
+
+  for (let linea of lineas) {
+    const id = linea.id.replace('linea', '');
+    const esAccesorio = linea.querySelector('.tipo-linea').textContent === 'ACCESORIO';
+    const tipo = document.getElementById(`tipo${id}`).value;
+    const cant = parseFloat(document.getElementById(`cant${id}`).value);
+    const precio = parseFloat(document.getElementById(`precio${id}`).value);
+
+    if (!cant || cant <= 0 ||!precio || precio <= 0) {
+      alert("Revisa los datos. No puede haber ceros o vacíos");
+      return;
+    }
+
+    if (esAccesorio) {
+      const subtotal = cant * precio;
+      accesorios.push({ tipo, cant, precio, subtotal });
+      totalCosto += subtotal;
+    } else {
+      let medida = parseFloat(document.getElementById(`medida${id}`).value);
+      const unidad = document.getElementById(`unidad${id}`).value;
+      
+      if (!medida || medida <= 0) {
+        alert("Revisa las medidas. No puede haber ceros");
+        return;
+      }
+      
+      if (unidad === "cm") medida = medida / 100;
+      
+      if (!materiales[tipo]) {
+        materiales[tipo] = { metros: 0, precio: precio, detalles: [] };
+      }
+      
+      const metrosLinea = cant * medida;
+      materiales[tipo].metros += metrosLinea;
+      materiales[tipo].detalles.push({ cant, medida, metrosLinea });
+    }
+  }
+
+  // Construimos tabla
+  let tabla = `<h2>Resultado</h2>`;
+  
+  // Tabla de materiales
+  if (Object.keys(materiales).length > 0) {
+    tabla += `<h3>Materiales</h3><table>
+      <tr><th>Material</th><th>Metros sin desperdicio</th><th>+10% desperdicio</th><th>Tramos 6m a comprar</th><th>Precio x tramo</th><th>Subtotal</th></tr>`;
+    
+    let totalTramos = 0, totalMetros = 0, totalDesperdicio = 0;
+    
+    for (let tipo in materiales) {
+      const mat = materiales[tipo];
+      const metrosDesp = mat.metros * (1 + DESPERDICIO);
+      const tramos = Math.ceil(metrosDesp / TRAMO);
+      const subtotal = tramos * mat.precio;
+      
+      totalMetros += mat.metros;
+      totalDesperdicio += metrosDesp;
+      totalTramos += tramos;
+      totalCosto += subtotal;
+      
+      let detalleCortes = mat.detalles.map(d => `${d.cant} pzas de ${d.medida.toFixed(2)}m`).join(' + ');
+      
+      tabla += `
+        <tr class="subtotal">
+          <td>${tipo}<br><small>${detalleCortes}</small></td>
+          <td>${mat.metros.toFixed(2)} m</td>
+          <td>${metrosDesp.toFixed(2)} m</td>
+          <td><strong>${tramos}</strong></td>
+          <td>$${mat.precio.toFixed(2)}</td>
+          <td>$${subtotal.toFixed(2)}</td>
+        </tr>
+      `;
+    }
+    tabla += `</table>
+    <p><strong>Metros comprados:</strong> ${totalTramos * TRAMO} m | <strong>Metros sobrantes:</strong> ${(totalTramos * TRAMO - totalDesperdicio).toFixed(2)} m</p>`;
+  }
+  
+  // Tabla de accesorios
+  if (accesorios.length > 0) {
+    tabla += `<h3>Accesorios</h3><table>
+      <tr><th>Descripción</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr>`;
+    
+    let totalAccesorios = 0;
+    for (let acc of accesorios) {
+      totalAccesorios += acc.subtotal;
+      tabla += `
+        <tr class="accesorio">
+          <td>${acc.tipo}</td>
+          <td>${acc.cant}</td>
+          <td>$${acc.precio.toFixed(2)}</td>
+          <td>$${acc.subtotal.toFixed(2)}</td>
+        </tr>
+      `;
+    }
+    tabla += `
+      <tr class="subtotal">
+        <td colspan="3">Subtotal Accesorios</td>
+        <td><strong>$${totalAccesorios.toFixed(2)}</strong></td>
+      </tr>
+    </table>`;
+  }
+  
+  tabla += `<h3 class="total">TOTAL GENERAL: $${totalCosto.toFixed(2)}</h3>`;
+
+  const divResultado = document.getElementById('resultado');
+  divResultado.innerHTML = tabla;
+  divResultado.style.display = 'block';
+}
+
+function limpiar() {
+  document.getElementById('lineas').innerHTML = '';
+  document.getElementById('resultado').style.display = 'none';
+  contadorLineas = 0;
+  agregarLinea('material');
+}
+
+agregarLinea('material');
+</script>
+
+</body>
+</html>
